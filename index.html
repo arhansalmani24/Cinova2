@@ -1,1 +1,487 @@
 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0c1018">
+<title>CINOVA | Camera Studio</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0c1018;color:#f4f7ff;font-family:Arial,sans-serif}
+header{padding:17px;display:flex;justify-content:space-between;align-items:center;background:#151e2d}
+.logo{font-size:28px;font-weight:900;letter-spacing:4px;color:#65e5ff}
+small,.muted{color:#9baac0}
+button,select{background:#202c3e;color:white;border:1px solid #3b4a60;border-radius:10px;padding:11px;cursor:pointer}
+button:active{transform:scale(.97)}
+main{max-width:950px;margin:auto;padding:13px}
+.card{background:#151e2d;border:1px solid #334258;border-radius:15px;padding:14px;margin-bottom:13px}
+.view{position:relative;aspect-ratio:4/3;background:#030609;overflow:hidden;border-radius:12px;display:grid;place-items:center}
+video{width:100%;height:100%;object-fit:cover;filter:var(--filter,none);transform:scale(var(--zoom,1))}
+video.mirror{transform:scaleX(-1) scale(var(--zoom,1))}
+#placeholder{position:absolute;text-align:center;padding:20px;color:#aab8cb}
+#placeholder strong{display:block;color:white;font-size:22px;margin-bottom:10px}
+#grid{position:absolute;inset:0;display:none;pointer-events:none;background-image:linear-gradient(90deg,transparent 33%,#fff7 33.3%,transparent 33.6%,transparent 66%,#fff7 66.3%,transparent 66.6%),linear-gradient(transparent 33%,#fff7 33.3%,transparent 33.6%,transparent 66%,#fff7 66.3%,transparent 66.6%)}
+#grid.show{display:block}
+.topline,.actions,.row{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.actions{justify-content:center;padding:14px}
+.shutter{width:68px;height:68px;border:5px solid white;border-radius:50%;background:linear-gradient(130deg,#65e5ff,#667cff)}
+h3{font-size:14px;letter-spacing:1px;margin:0 0 13px}
+.tabs{display:flex;gap:7px;overflow:auto;margin-bottom:12px}
+.tabs button{white-space:nowrap}
+.tabs .active{background:#65e5ff;color:#07131c}
+.filters{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-height:250px;overflow:auto}
+.filter{font-size:11px;padding:11px 3px}
+.filter.active{border-color:#65e5ff;color:#65e5ff}
+.field{margin:13px 0}
+.field label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:7px;color:#c5d1e0}
+output{color:#65e5ff}
+input[type=range]{width:100%;accent-color:#65e5ff}
+select{width:100%}
+.row button{flex:1}
+canvas.hist{width:100%;height:100px;background:#080d15;border-radius:8px}
+.gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.gallery img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px}
+.note{font-size:12px;color:#9baac0;line-height:1.5}
+footer{text-align:center;padding:20px;color:#8190a6;font-size:11px}
+[hidden]{display:none!important}
+@media(max-width:500px){main{padding:9px}.filters{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<header>
+<div><div class="logo">CINOVA</div><small>ADVANCED CAMERA STUDIO</small></div>
+<button id="switch">↻ Switch</button>
+</header>
+
+<main>
+<div class="card">
+<div class="topline"><b>LIVE VIEWFINDER</b><small id="status">Camera offline</small></div>
+<div class="view" style="margin-top:12px">
+<video id="video" autoplay playsinline muted></video>
+<div id="placeholder">
+<strong>Welcome to CINOVA</strong>
+Start your camera experience.
+<br><br><button id="start">START CAMERA</button>
+</div>
+<div id="grid"></div>
+</div>
+<div class="actions">
+<button id="gridBtn">▦ Grid</button>
+<button class="shutter" id="capture"></button>
+<button id="mirrorBtn">↔ Mirror</button>
+<button id="download">↓ Download</button>
+</div>
+<div class="topline"><small id="resolution">Resolution: —</small><small id="count">0 photos</small></div>
+</div>
+
+<div class="card">
+<h3>FILTER STUDIO · <span id="total">120</span> FILTERS</h3>
+<div class="tabs">
+<button class="active" data-cat="All">All</button>
+<button data-cat="Classic">Classic</button>
+<button data-cat="Film">Film</button>
+<button data-cat="Color">Color</button>
+<button data-cat="Mono">Mono</button>
+<button data-cat="Creative">Creative</button>
+</div>
+<div class="filters" id="filters"></div>
+</div>
+
+<div class="card">
+<h3>COLOR & IMAGE BALANCE</h3>
+<div id="sliders"></div>
+<div class="row">
+<button id="reset">Reset</button>
+<button id="random">Random filter</button>
+</div>
+</div>
+
+<div class="card">
+<h3>LIVE RGB HISTOGRAM</h3>
+<canvas class="hist" id="hist" width="600" height="180"></canvas>
+<p class="note" id="histStatus">Start camera to view RGB distribution.</p>
+</div>
+
+<div class="card">
+<h3>CAPTURE SETTINGS</h3>
+<div class="field">
+<label>Capture timer</label>
+<select id="timer">
+<option value="0">Off</option>
+<option value="3">3 seconds</option>
+<option value="5">5 seconds</option>
+<option value="10">10 seconds</option>
+</select>
+</div>
+<div class="field">
+<label>Photo format</label>
+<select id="format">
+<option value="image/jpeg">JPEG</option>
+<option value="image/png">PNG</option>
+</select>
+</div>
+</div>
+
+<div class="card">
+<h3>RECENT CAPTURES</h3>
+<div class="gallery" id="gallery"></div>
+<p class="note" id="empty">Your photos will appear here.</p>
+<button id="clear">Clear gallery</button>
+</div>
+</main>
+
+<footer>CINOVA CAMERA STUDIO · Capture your world.</footer>
+
+<canvas id="photoCanvas" hidden></canvas>
+<canvas id="sample" width="100" height="60" hidden></canvas>
+
+<script>
+const $=id=>document.getElementById(id);
+const video=$('video');
+
+let stream=null;
+let facing='environment';
+let mirrored=false;
+let selected=null;
+let photos=[];
+let last=null;
+let raf=null;
+
+const settings={
+brightness:100,
+contrast:100,
+saturation:100,
+hue:0,
+warmth:0,
+zoom:1
+};
+
+const controls=[
+['brightness','Brightness',50,160,100,'%'],
+['contrast','Contrast',50,180,100,'%'],
+['saturation','Saturation',0,200,100,'%'],
+['hue','Hue',-180,180,0,'°'],
+['warmth','Warmth',-50,50,0,''],
+['zoom','Zoom',1,3,1,'×',0.1]
+];
+
+controls.forEach(([id,name,min,max,value,unit,step])=>{
+const div=document.createElement('div');
+div.className='field';
+div.innerHTML=`<label>${name}<output id="${id}Val">${value}${unit}</output></label>
+<input id="${id}" type="range" min="${min}" max="${max}" value="${value}" step="${step||1}">`;
+$('sliders').append(div);
+
+$(id).addEventListener('input',e=>{
+settings[id]=Number(e.target.value);
+$(id+'Val').textContent=settings[id]+unit;
+apply();
+});
+});
+
+const base=[
+['Natural','Classic','none'],
+['Soft Light','Classic','brightness(1.08) contrast(.92)'],
+['Vivid','Classic','saturate(1.5) contrast(1.1)'],
+['Warm Glow','Classic','sepia(.25) saturate(1.3)'],
+['Cool Tone','Classic','hue-rotate(15deg)'],
+['Golden Hour','Film','sepia(.4) saturate(1.3)'],
+['Vintage','Film','sepia(.5) contrast(.9)'],
+['Matte','Film','contrast(.85) brightness(1.1)'],
+['Fade','Film','brightness(1.1) saturate(.7)'],
+['Cinematic','Film','contrast(1.3) saturate(.8)'],
+['Noir','Mono','grayscale(1) contrast(1.3)'],
+['Silver','Mono','grayscale(1) brightness(1.1)'],
+['High Key','Mono','grayscale(1) brightness(1.25)'],
+['Deep Mono','Mono','grayscale(1) contrast(1.6)'],
+['Rose','Color','hue-rotate(320deg) saturate(1.5)'],
+['Arctic','Color','hue-rotate(160deg)'],
+['Lemon','Color','hue-rotate(35deg) saturate(1.5)'],
+['Dream','Creative','hue-rotate(270deg) saturate(1.4)'],
+['Cyber','Creative','hue-rotate(145deg) saturate(1.7)'],
+['Dramatic','Creative','contrast(1.5) saturate(1.2)']
+];
+
+let filters=base.map(x=>({name:x[0],cat:x[1],css:x[2]}));
+
+const variants=[
+['Soft','brightness(1.08) saturate(.85)'],
+['Rich','contrast(1.2) saturate(1.3)'],
+['Pastel','brightness(1.12) saturate(.7)'],
+['Dark','brightness(.82) contrast(1.2)'],
+['Bright','brightness(1.2) contrast(.9)']
+];
+
+for(let i=0;i<100;i++){
+const b=base[i%base.length];
+const v=variants[Math.floor(i/20)];
+filters.push({
+name:b[0]+' '+v[0],
+cat:b[1],
+css:b[2]+' '+v[1]
+});
+}
+
+$('total').textContent=filters.length;
+
+function renderFilters(cat='All'){
+$('filters').innerHTML='';
+filters.filter(f=>cat==='All'||f.cat===cat).forEach(f=>{
+const b=document.createElement('button');
+b.className='filter'+(selected===f?' active':'');
+b.textContent=f.name;
+b.onclick=()=>{
+selected=f;
+renderFilters(cat);
+apply();
+};
+$('filters').append(b);
+});
+}
+
+document.querySelectorAll('.tabs button').forEach(b=>{
+b.onclick=()=>{
+document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
+b.classList.add('active');
+renderFilters(b.dataset.cat);
+};
+});
+
+function getFilter(){
+return (selected?selected.css+' ':'')+
+`brightness(${settings.brightness/100})
+contrast(${settings.contrast/100})
+saturate(${settings.saturation/100})
+hue-rotate(${settings.hue}deg)
+sepia(${Math.max(0,settings.warmth)/150})`;
+}
+
+function apply(){
+video.style.setProperty('--filter',getFilter());
+video.style.setProperty('--zoom',settings.zoom);
+}
+
+async function startCamera(){
+try{
+if(!navigator.mediaDevices?.getUserMedia){
+throw Error('Camera needs HTTPS and a supported browser.');
+}
+if(stream)stream.getTracks().forEach(t=>t.stop());
+
+stream=await navigator.mediaDevices.getUserMedia({
+audio:false,
+video:{
+facingMode:{ideal:facing},
+width:{ideal:1920},
+height:{ideal:1080}
+}
+});
+
+video.srcObject=stream;
+await video.play();
+$('placeholder').hidden=true;
+$('status').textContent='Camera active';
+$('resolution').textContent=video.videoWidth+' × '+video.videoHeight;
+startHistogram();
+
+}catch(e){
+$('status').textContent='Camera unavailable';
+$('placeholder').hidden=false;
+$('placeholder').innerHTML=`<strong>Camera unavailable</strong><p>${e.message}</p><button id="retry">Retry</button>`;
+$('retry').onclick=startCamera;
+}
+}
+
+$('start').onclick=startCamera;
+
+$('switch').onclick=()=>{
+facing=facing==='environment'?'user':'environment';
+startCamera();
+};
+
+$('mirrorBtn').onclick=()=>{
+mirrored=!mirrored;
+video.classList.toggle('mirror',mirrored);
+};
+
+$('gridBtn').onclick=()=>{
+$('grid').classList.toggle('show');
+};
+
+$('reset').onclick=()=>{
+controls.forEach(([id,name,min,max,value,unit])=>{
+settings[id]=value;
+$(id).value=value;
+$(id+'Val').textContent=value+unit;
+});
+selected=null;
+renderFilters(document.querySelector('.tabs .active').dataset.cat);
+apply();
+};
+
+$('random').onclick=()=>{
+selected=filters[Math.floor(Math.random()*filters.length)];
+renderFilters(document.querySelector('.tabs .active').dataset.cat);
+apply();
+};
+
+function takePhoto(){
+if(!stream||!video.videoWidth){
+$('status').textContent='Start camera first';
+return;
+}
+
+const c=$('photoCanvas');
+const w=video.videoWidth;
+const h=video.videoHeight;
+c.width=w;
+c.height=h;
+
+const ctx=c.getContext('2d');
+const z=settings.zoom;
+const sw=w/z;
+const sh=h/z;
+const sx=(w-sw)/2;
+const sy=(h-sh)/2;
+
+ctx.save();
+if(mirrored){
+ctx.translate(w,0);
+ctx.scale(-1,1);
+}
+ctx.filter=getFilter();
+ctx.drawImage(video,sx,sy,sw,sh,0,0,w,h);
+ctx.restore();
+
+const type=$('format').value;
+
+c.toBlob(blob=>{
+if(!blob)return;
+const url=URL.createObjectURL(blob);
+const item={
+url,
+name:'CINOVA_'+Date.now()+(type==='image/png'?'.png':'.jpg')
+};
+
+photos.unshift(item);
+photos=photos.slice(0,12);
+last=item;
+renderGallery();
+$('count').textContent=photos.length+' photos';
+$('status').textContent='Photo captured ✓';
+},type,.94);
+}
+
+$('capture').onclick=()=>{
+const seconds=Number($('timer').value);
+if(!seconds){
+takePhoto();
+return;
+}
+
+let n=seconds;
+$('status').textContent='Capturing in '+n;
+const interval=setInterval(()=>{
+n--;
+$('status').textContent=n?'Capturing in '+n:'Capture!';
+if(n<=0){
+clearInterval(interval);
+takePhoto();
+}
+},1000);
+};
+
+function download(item){
+if(!item)return;
+const a=document.createElement('a');
+a.href=item.url;
+a.download=item.name;
+a.click();
+}
+
+$('download').onclick=()=>{
+if(last)download(last);
+else $('status').textContent='No photo captured yet';
+};
+
+function renderGallery(){
+$('gallery').innerHTML='';
+$('empty').hidden=photos.length>0;
+
+photos.slice(0,8).forEach(p=>{
+const img=document.createElement('img');
+img.src=p.url;
+img.alt='CINOVA photo';
+img.onclick=()=>download(p);
+$('gallery').append(img);
+});
+}
+
+$('clear').onclick=()=>{
+photos.forEach(p=>URL.revokeObjectURL(p.url));
+photos=[];
+last=null;
+renderGallery();
+$('count').textContent='0 photos';
+};
+
+function startHistogram(){
+if(raf)cancelAnimationFrame(raf);
+
+const c=$('hist');
+const ctx=c.getContext('2d');
+const sample=$('sample');
+const sctx=sample.getContext('2d',{willReadFrequently:true});
+
+function draw(){
+if(stream&&video.readyState>=2){
+try{
+sctx.drawImage(video,0,0,100,60);
+const d=sctx.getImageData(0,0,100,60).data;
+const bins=[new Array(32).fill(0),new Array(32).fill(0),new Array(32).fill(0)];
+
+for(let i=0;i<d.length;i+=4){
+bins[0][d[i]>>3]++;
+bins[1][d[i+1]>>3]++;
+bins[2][d[i+2]>>3]++;
+}
+
+const max=Math.max(...bins.flat(),1);
+ctx.clearRect(0,0,600,180);
+ctx.fillStyle='#080d15';
+ctx.fillRect(0,0,600,180);
+
+const colors=['#ff657a','#5be3a4','#66a8ff'];
+
+bins.forEach((arr,ch)=>{
+ctx.fillStyle=colors[ch];
+arr.forEach((v,i)=>{
+const height=v/max*145;
+ctx.globalAlpha=.65;
+ctx.fillRect(i*18.75,160-height,13,height);
+});
+});
+
+ctx.globalAlpha=1;
+$('histStatus').textContent='Live RGB distribution · Red / Green / Blue';
+
+}catch(e){
+$('histStatus').textContent='Histogram processing unavailable';
+}
+}
+raf=requestAnimationFrame(draw);
+}
+draw();
+}
+
+renderFilters();
+
+window.addEventListener('pagehide',()=>{
+if(stream)stream.getTracks().forEach(t=>t.stop());
+if(raf)cancelAnimationFrame(raf);
+});
+</script>
+</body>
+</html>
